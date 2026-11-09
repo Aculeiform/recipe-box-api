@@ -9,7 +9,7 @@ That is the point: you will add both, lesson by lesson, in Units 2 and 3.
 import sqlite3
 
 from flask import Flask, g, jsonify, request
-from security import hash_password
+from security import hash_password, verify_password
 DATABASE = "recipes.db"
 
 app = Flask(__name__)
@@ -170,6 +170,48 @@ def register():
         "message": "User registered successfully",
         "user_id": user_id
     }, 201
+
+@app.route('/login', methods=['POST'])
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    username = data.get("username")
+    password = data.get("password")
+
+    if not isinstance(username, str) or not username.strip():
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    if not isinstance(password, str) or not password:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    with sqlite3.connect("recipes.db") as conn:
+        conn.row_factory = sqlite3.Row
+
+        row = conn.execute(
+            """
+            SELECT id, username, password_hash
+            FROM users
+            WHERE username = ?
+            """,
+            (username.strip(),)
+        ).fetchone()
+
+    if row is None:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    if not verify_password(row["password_hash"], password):
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    return jsonify({
+        "id": row["id"],
+        "username": row["username"]
+    }), 200
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)
