@@ -177,16 +177,16 @@ def login():
     data = request.get_json(silent=True)
 
     if not isinstance(data, dict):
-        return jsonify({"error": "Invalid credentials"}), 401
+        return jsonify({"error": "Invalid credentials"}), 400
 
     username = data.get("username")
     password = data.get("password")
 
     if not isinstance(username, str) or not username.strip():
-        return jsonify({"error": "Invalid credentials"}), 401
+        return jsonify({"error": "Username is required"}), 400
 
     if not isinstance(password, str) or not password:
-        return jsonify({"error": "Invalid credentials"}), 401
+        return jsonify({"error": "Password is required"}), 400
 
     with sqlite3.connect("recipes.db") as conn:
         conn.row_factory = sqlite3.Row
