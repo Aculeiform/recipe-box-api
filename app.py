@@ -1,3 +1,4 @@
+
 """Recipe Box API — BE104 course skeleton.
 
 A working Flask + SQLite CRUD API for recipes. It stores data perfectly —
@@ -8,7 +9,7 @@ That is the point: you will add both, lesson by lesson, in Units 2 and 3.
 import sqlite3
 
 from flask import Flask, g, jsonify, request
-
+from security import hash_password
 DATABASE = "recipes.db"
 
 app = Flask(__name__)
@@ -127,6 +128,48 @@ def delete_recipe(recipe_id):
         return jsonify({"error": "recipe not found"}), 404
     return "", 204
 
+@app.post("/register")
+def register():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return {"error": "Registration data is required"}, 400
+
+    username = data.get("username")
+    password = data.get("password")
+    email = data.get("email")
+
+    if not all(
+        isinstance(value, str) and value.strip()
+        for value in (username, password, email)
+    ):
+        return {
+            "error": "username, password, and email are required and cannot be blank"
+        }, 400
+
+    username = username.strip()
+    email = email.strip()
+
+    password_hash = hash_password(password)
+
+    try:
+        with sqlite3.connect("recipes.db") as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO users (username, email, password_hash)
+                VALUES (?, ?, ?)
+                """,
+                (username, email, password_hash)
+            )
+            user_id = cursor.lastrowid
+
+    except sqlite3.IntegrityError:
+        return {"error": "Username or email already exists"}, 409
+
+    return {
+        "message": "User registered successfully",
+        "user_id": user_id
+    }, 201
 
 if __name__ == "__main__":
     app.run(debug=True)
