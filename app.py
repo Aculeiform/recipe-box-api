@@ -8,6 +8,15 @@ That is the point: you will add both, lesson by lesson, in Units 2 and 3.
 
 import sqlite3
 
+import jwt
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+JWT_SECRET = os.getenv("JWT_SECRET")
+
+
 from flask import Flask, g, jsonify, request
 from security import hash_password, verify_password
 DATABASE = "recipes.db"
@@ -206,9 +215,22 @@ def login():
     if not verify_password(row["password_hash"], password):
         return jsonify({"error": "Invalid credentials"}), 401
 
+    # TODO: issue JWT here after successful login
+    from datetime import datetime, timedelta
+
+    # ...
+
+    payload = {
+    "sub": str(row["id"]),  # or whatever your user id field is
+    "exp": datetime.utcnow() + timedelta(hours=1),
+    }
+
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    
     return jsonify({
         "id": row["id"],
-        "username": row["username"]
+        "username": row["username"],
+        "token": token
     }), 200
 
 
