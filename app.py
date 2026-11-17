@@ -75,6 +75,7 @@ def token_required(f):
 
         g.user_id = int(user_id)
         print("Authenticated user ID:", g.user_id)
+        g.role = decoded.get("role", "user")
 
         return f(*args, **kwargs)
 
@@ -171,9 +172,9 @@ def update_recipe(recipe_id):
         return jsonify({"error": "recipe not found"}), 404
 
     # Check whether the authenticated user owns it
-    if g.user_id != recipe["owner_id"]:
-        return jsonify({"error": "Forbidden: not your recipe"}), 403
-
+    if g.role != "admin" and g.user_id != recipe["owner_id"]:
+    return jsonify({"error": "Forbidden: not your recipe"}), 403
+ 
     values.append(recipe_id)
 
     try:
@@ -205,9 +206,9 @@ def delete_recipe(recipe_id):
     if recipe is None:
         return jsonify({"error": "recipe not found"}), 404
 
-    if g.user_id != recipe["owner_id"]:
-        return jsonify({"error": "Forbidden: not your recipe"}), 403
-
+    if g.role != "admin" and g.user_id != recipe["owner_id"]:
+    return jsonify({"error": "Forbidden: not your recipe"}), 403 
+   
     cur = db.execute(
         "DELETE FROM recipes WHERE id = ?",
         (recipe_id,)
@@ -301,6 +302,7 @@ def login():
 
     payload = {
     "sub": str(row["id"]),  # or whatever your user id field is
+    "role": row["role"],
     "exp": datetime.utcnow() + timedelta(hours=1),
     }
 
