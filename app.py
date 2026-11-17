@@ -75,7 +75,7 @@ def token_required(f):
 
         g.user_id = int(user_id)
         print("Authenticated user ID:", g.user_id)
-        g.role = decoded.get("role", "user")
+        g.role = payload.get("role", "user")
 
         return f(*args, **kwargs)
 
@@ -282,7 +282,7 @@ def login():
 
         row = conn.execute(
             """
-            SELECT id, username, password_hash
+            SELECT id, username, password_hash, role
             FROM users
             WHERE username = ?
             """,
