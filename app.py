@@ -81,6 +81,29 @@ def token_required(f):
 
     return decorated
 
+from functools import wraps
+
+def owner_or_admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        recipe_id = kwargs["recipe_id"]
+
+        db = get_db()
+        recipe = db.execute(
+            "SELECT owner_id FROM recipes WHERE id = ?",
+            (recipe_id,)
+        ).fetchone()
+
+        if recipe is None:
+            return jsonify({"error": "Recipe not found"}), 404
+
+        if g.role != "admin" and g.user_id != recipe["owner_id"]:
+            return jsonify({"error": "Forbidden: not your recipe"}), 403
+
+        return f(*args, **kwargs)
+
+    return decorated
+
 @app.get("/")
 def hello():
     return jsonify({"message": "Recipe Box API", "recipes": "/recipes"})
@@ -140,6 +163,7 @@ def create_recipe():
 
 @app.patch("/recipes/<int:recipe_id>")
 @token_required
+@owner_or_admin_required
 def update_recipe(recipe_id):
     data = request.get_json(silent=True)
 
@@ -161,24 +185,10 @@ def update_recipe(recipe_id):
         return jsonify({"error": "nothing to update"}), 400
 
     db = get_db()
-
-    # Check whether the recipe exists
-    recipe = db.execute(
-        "SELECT owner_id FROM recipes WHERE id = ?",
-        (recipe_id,)
-    ).fetchone()
-
-    if recipe is None:
-        return jsonify({"error": "recipe not found"}), 404
-
-    # Check whether the authenticated user owns it
-    if g.role != "admin" and g.user_id != recipe["owner_id"]:
-    return jsonify({"error": "Forbidden: not your recipe"}), 403
- 
     values.append(recipe_id)
 
     try:
-        cur = db.execute(
+        db.execute(
             f"UPDATE recipes SET {', '.join(fields)} WHERE id = ?",
             values
         )
@@ -195,21 +205,11 @@ def update_recipe(recipe_id):
 
 @app.delete("/recipes/<int:recipe_id>")
 @token_required
+@owner_or_admin_required
 def delete_recipe(recipe_id):
     db = get_db()
-
-    recipe = db.execute(
-        "SELECT owner_id FROM recipes WHERE id = ?",
-        (recipe_id,)
-    ).fetchone()
-
-    if recipe is None:
-        return jsonify({"error": "recipe not found"}), 404
-
-    if g.role != "admin" and g.user_id != recipe["owner_id"]:
-    return jsonify({"error": "Forbidden: not your recipe"}), 403 
    
-    cur = db.execute(
+    db.execute(
         "DELETE FROM recipes WHERE id = ?",
         (recipe_id,)
     )
